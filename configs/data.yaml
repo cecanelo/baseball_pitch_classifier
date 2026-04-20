@@ -1,0 +1,59 @@
+# ─────────────────────────────────────────────
+# data.yaml
+# Central data configuration for the baseball
+# pitch classifier project.
+# ─────────────────────────────────────────────
+
+# Season
+season:
+  start: "2023-03-30"
+  end:   "2023-10-01"
+
+# Pitchers to fetch
+pitchers:
+  - first: "Shohei"
+    last:  "Ohtani"
+  - first: "Spencer"
+    last:  "Strider"
+  - first: "Zack"
+    last:  "Wheeler"
+  - first: "Gerrit"
+    last:  "Cole"
+  - first: "Clayton"
+    last:  "Kershaw"
+
+# Features used for classification
+features:
+  - release_speed        # pitch velocity (mph)
+  - release_spin_rate    # spin rate (rpm)
+  - pfx_x                # horizontal movement (ft)
+  - pfx_z                # vertical movement (ft)
+  - release_pos_x        # horizontal release point (ft)
+  - release_pos_z        # vertical release point (ft)
+  - plate_x              # horizontal location at plate (ft)
+  - plate_z              # vertical location at plate (ft)
+  - release_extension    # extension toward plate (ft)
+
+# Target variable
+target: "pitch_type"
+
+# Pitch type filtering
+filtering:
+  min_pitch_count: 50          # drop pitch types with fewer than this many samples
+  exclude_pitch_types:         # unknown or irrelevant pitch types
+    - "UN"
+    - "PO"
+    - "IN"
+    - ""
+
+# Train/test split
+split:
+  test_size:    0.2
+  random_state: 42
+  stratify:     true
+
+# Paths
+paths:
+  raw_dir:       "data/raw"
+  processed_dir: "data/processed"
+  logs_dir:      "logs"
