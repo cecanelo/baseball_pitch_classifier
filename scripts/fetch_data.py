@@ -2,6 +2,8 @@ import yaml
 import pandas as pd
 from time import sleep
 import logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
 import os
 import argparse
 from pybaseball import playerid_lookup, statcast_pitcher
@@ -49,8 +51,6 @@ def save_pitcher_data(df: pd.DataFrame, csv_path: str) -> None:
 
 
 def main():
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', required=True)
     args = parser.parse_args()
