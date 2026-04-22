@@ -24,15 +24,16 @@ pitchers:
 
 # Features used for classification
 features:
-  - release_speed        # pitch velocity (mph)
-  - release_spin_rate    # spin rate (rpm)
-  - pfx_x                # horizontal movement (ft)
-  - pfx_z                # vertical movement (ft)
-  - release_pos_x        # horizontal release point (ft)
-  - release_pos_z        # vertical release point (ft)
-  - plate_x              # horizontal location at plate (ft)
-  - plate_z              # vertical location at plate (ft)
-  - release_extension    # extension toward plate (ft)
+  - release_speed         # pitch velocity (mph)
+  - release_spin_rate     # spin rate (rpm)
+  - pfx_x                 # horizontal movement (ft)
+  - pfx_z                 # vertical movement (ft)
+  - release_pos_x         # horizontal release point (ft)
+  - release_pos_z         # vertical release point (ft)
+  - plate_x               # horizontal location at plate (ft)
+  - plate_z               # vertical location at plate (ft)
+  - release_extension     # extension toward plate (ft)
+  - p_throws              # pitcher handedness (0=L, 1=R)
 
 # Target variable
 target: "pitch_type"

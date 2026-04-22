@@ -47,6 +47,7 @@ def main():
 
     df = exclude_pitch_types(excluded_pitches, df)
     df = exclude_below_threshold(threshold, df)
+    df['p_throws'] = (df['p_throws'] == 'R').astype(int)
     df = select_features(selected_features, target, df)
 
     X = df[selected_features]
