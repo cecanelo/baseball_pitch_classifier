@@ -21,6 +21,12 @@ pitchers:
     last:  "Cole"
   - first: "Clayton"
     last:  "Kershaw"
+  - first: "Blake"
+    last:  "Snell"
+  - first: "Max"
+    last:  "Fried"
+  - first: "Framber"
+    last:  "Valdez"
 
 # Features used for classification
 features:
