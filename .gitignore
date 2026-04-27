@@ -1,0 +1,34 @@
+# Data
+data/raw/
+data/processed/
+
+# Results
+results/models/
+results/metrics/
+results/figures/
+
+# Logs
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ML artifacts
+*.pkl
+*.joblib
+*.h5
+
+# Environment
+.env
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
