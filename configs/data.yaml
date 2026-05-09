@@ -59,6 +59,18 @@ split:
   random_state: 1
   stratify:     true
 
+# HPO validation strategy
+hpo_validation:
+  strategy: kfold       # "kfold" or "fixed_split"
+  n_folds:  5           # used only when strategy is kfold
+  val_size: 0.2         # used only when strategy is fixed_split
+
+# HPO validation strategy
+hpo_validation:
+  strategy: kfold       # "kfold" or "fixed_split"
+  n_folds:  5           # used only when strategy is kfold
+  val_size: 0.2         # used only when strategy is fixed_split
+
 # Paths
 paths:
   raw_dir:       "data/raw"

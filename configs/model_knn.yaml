@@ -16,10 +16,20 @@ hpo:
     primary:   f1_weighted
     secondary: accuracy
   search_space:
-    n_neighbors: [3, 30]
-    weights:     ["uniform", "distance"]
-    metric:      ["euclidean", "manhattan", "minkowski"]
-    p:           [1, 2]       # power parameter for minkowski
+    n_neighbors:
+      type: int
+      low:  3
+      high: 30
+    weights:
+      type:    categorical
+      choices: ["uniform", "distance"]
+    metric:
+      type:    categorical
+      choices: ["euclidean", "manhattan", "minkowski"]
+    p:
+      type: int
+      low:  1
+      high: 2
 
 output:
   save_model:              true

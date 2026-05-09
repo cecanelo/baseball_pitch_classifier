@@ -17,9 +17,18 @@ hpo:
     primary:   f1_weighted
     secondary: accuracy
   search_space:
-    C:          [0.001, 100.0]    # regularization strength (log scale)
-    solver:     ["lbfgs", "saga"] # optimization algorithm
-    max_iter:   [500, 2000]
+    C:
+      type: float
+      low:  0.001
+      high: 100.0
+      log:  true
+    solver:
+      type:    categorical
+      choices: ["lbfgs", "saga"]
+    max_iter:
+      type: int
+      low:  500
+      high: 2000
 
 output:
   save_model:            true

@@ -22,12 +22,31 @@ hpo:
     primary:   f1_weighted
     secondary: accuracy
   search_space:
-    n_estimators:  [50, 300]
-    max_depth:     [3, 10]
-    learning_rate: [0.01, 0.3]   # log scale
-    subsample:     [0.6, 1.0]
-    colsample_bytree: [0.6, 1.0]
-    min_child_weight: [1, 10]
+    n_estimators:
+      type: int
+      low:  50
+      high: 300
+    max_depth:
+      type: int
+      low:  3
+      high: 10
+    learning_rate:
+      type: float
+      low:  0.01
+      high: 0.3
+      log:  true
+    subsample:
+      type: float
+      low:  0.6
+      high: 1.0
+    colsample_bytree:
+      type: float
+      low:  0.6
+      high: 1.0
+    min_child_weight:
+      type: int
+      low:  1
+      high: 10
 
 output:
   save_model:              true
