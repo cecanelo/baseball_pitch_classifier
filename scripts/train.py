@@ -100,37 +100,19 @@ def run_hpo(model_name: str,
 
     return study.best_params
        
+def save_best_params(best_params: dict, model_name: str, metrics_dir: str) -> None:
+    os.makedirs(metrics_dir, exist_ok=True)
+    path = os.path.join(metrics_dir, f'{model_name}_best_params.json')
+    with open(path, 'w') as f:
+        json.dump(best_params, f, indent=2)
+    logging.info(f'Best params saved to {path}')
 
 
-'''FUNCTION run_hpo(model_name, X_train, y_train, hpo_config, val_config):
+def load_best_params(model_name: str, metrics_dir: str) -> dict:
+    path = os.path.join(metrics_dir, f'{model_name}_best_params.json')
+    if not os.path.exists(path):
+        raise FileNotFoundError(f'Best params not found: {path}. Run with hpo.enabled=true first.')
+    with open(path, 'r') as f:
+        return json.load(f)
 
-    DEFINE inner function objective(trial):
 
-        CALL suggest_params(trial, hpo_config['search_space'])
-            → gives us a dict of sampled hyperparameters
-
-        CALL build_pipeline(model_name, sampled params)
-            → gives us a fitted-ready Pipeline
-
-        IF val_config['strategy'] is 'kfold':
-            SCORE the pipeline using cross_val_score
-                with cv = val_config['n_folds']
-                and scoring = 'f1_weighted'
-            RETURN the mean score across all folds
-
-        ELSE IF val_config['strategy'] is 'fixed_split':
-            SPLIT X_train into X_tr, X_val, y_tr, y_val
-                using val_config['val_size']
-            FIT the pipeline on X_tr, y_tr
-            SCORE on X_val, y_val using f1_weighted
-            RETURN that score
-
-    CREATE an Optuna study with direction = 'maximize'
-        (we want to maximize F1, not minimize)
-
-    RUN study.optimize(objective, n_trials = hpo_config['n_trials'])
-
-    LOG the best score and best parameters found
-
-    RETURN study.best_params
-'''

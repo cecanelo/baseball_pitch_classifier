@@ -3,7 +3,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 
 from sklearn.pipeline import Pipeline
-from train import build_pipeline, suggest_params
+from train import build_pipeline, suggest_params, run_hpo, save_best_params, load_best_params
+from utils import load_data
 import pytest
 import optuna
 
@@ -12,21 +13,26 @@ def test_build_pipeline_returns_pipeline():
     result = build_pipeline('random_forest', {})
     assert isinstance(result, Pipeline)
 
+
 def test_build_pipeline_adds_scaler_for_knn():
     result = build_pipeline('knn', {})
     assert 'scaler' in result.named_steps
+
 
 def test_build_pipeline_adds_scaler_for_mlp():
     result = build_pipeline('mlp', {})
     assert 'scaler' in result.named_steps
 
+
 def test_build_pipeline_no_scaler_for_random_forest():
     result = build_pipeline('random_forest', {})
     assert 'scaler' not in result.named_steps
 
+
 def test_build_pipeline_raises_unknown_model():
     with pytest.raises(ValueError):
         build_pipeline('unknown_model', {})
+
 
 def test_suggest_params_int():
     study = optuna.create_study()
@@ -37,6 +43,7 @@ def test_suggest_params_int():
     assert isinstance(result['n_estimators'], int)
     assert 50 <= result['n_estimators'] <= 300
 
+
 def test_suggest_params_float():
     study = optuna.create_study()
     trial = study.ask()
@@ -46,6 +53,7 @@ def test_suggest_params_float():
     assert isinstance(result['learning_rate'], float)
     assert 0.01 <= result['learning_rate'] <= 0.3
 
+
 def test_suggest_params_categorical_strings():
     study = optuna.create_study()
     trial = study.ask()
@@ -53,6 +61,7 @@ def test_suggest_params_categorical_strings():
     result = suggest_params(trial, search_space)
     assert 'max_features' in result
     assert result['max_features'] in ['sqrt', 'log2']
+
 
 def test_suggest_params_categorical_lists():
     study = optuna.create_study()
@@ -63,33 +72,54 @@ def test_suggest_params_categorical_lists():
     assert isinstance(result['hidden_layer_size'], list)
     assert result['hidden_layer_size'] in [[64, 32], [128, 64]]
 
-'''
-FUNCTION test_suggest_params_categorical_strings:
-    CREATE an Optuna study
-    CREATE a trial from the study
 
-    SET search_space with one categorical parameter:
-        name: "max_features", type: "categorical", choices: ["sqrt", "log2"]
+def test_run_hpo_kfold_returns_best_params():
+    X_train, X_test, y_train, y_test = load_data('data/processed')
 
-    CALL suggest_params(trial, search_space)
+    hpo_config = {
+        'n_trials': 2,
+        'metrics': {'primary': 'f1_weighted'},
+        'search_space': {
+            'n_estimators': {'type': 'int', 'low': 50, 'high': 100}}
+        }
+    val_config = {
+        'strategy': 'kfold',
+        'n_folds': 2
+        }
+    
+    result = run_hpo('random_forest', X_train, y_train, hpo_config, val_config)
 
-    ASSERT "max_features" is in the result
-    ASSERT the value is one of ["sqrt", "log2"]
+    assert isinstance(result, dict)
+    assert 'n_estimators' in result
 
+def test_run_hpo_fixed_split_returns_best_params():
+    X_train, X_test, y_train, y_test = load_data('data/processed')
 
-FUNCTION test_suggest_params_categorical_lists:
-    CREATE an Optuna study
-    CREATE a trial from the study
+    hpo_config = {
+        'n_trials': 2,
+        'metrics': {'primary': 'f1_weighted'},
+        'search_space': {
+            'n_estimators': {'type': 'int', 'low': 50, 'high': 100}}
+        }
+    val_config = {
+        'strategy': 'fixed_split',
+        'val_size': 0.2
+        }
+    
+    result = run_hpo('random_forest', X_train, y_train, hpo_config, val_config)
 
-    SET search_space with one categorical parameter:
-        name: "hidden_layer_sizes", type: "categorical",
-        choices: [[64, 32], [128, 64]]
+    assert isinstance(result, dict)
+    assert 'n_estimators' in result
 
-    CALL suggest_params(trial, search_space)
+def test_save_and_load_best_params(tmp_path):
+    best_params = {'n_estimators': 150, 'max_depth': 10}
+    save_best_params(best_params, 'random_forest', str(tmp_path))
+    result = load_best_params('random_forest', str(tmp_path))
+    assert result == best_params
 
-    ASSERT "hidden_layer_sizes" is in the result
-    ASSERT the value is a list, not a tuple
-    ASSERT the value is one of [[64, 32], [128, 64]]
-'''
+def test_load_best_params_raises_if_missing(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        load_best_params('random_forest', str(tmp_path))
+
             
 
