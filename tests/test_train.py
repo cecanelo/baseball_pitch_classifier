@@ -3,10 +3,11 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 
 from sklearn.pipeline import Pipeline
-from train import build_pipeline, suggest_params, run_hpo, save_best_params, load_best_params
-from utils import load_data
+from train import build_pipeline, suggest_params, run_hpo, save_best_params, load_best_params, refit_final_model, compute_metrics, save_pipeline, save_metrics #type: ignore
+from utils import load_data #type: ignore
 import pytest
 import optuna
+import json
 
 
 def test_build_pipeline_returns_pipeline():
@@ -92,6 +93,7 @@ def test_run_hpo_kfold_returns_best_params():
     assert isinstance(result, dict)
     assert 'n_estimators' in result
 
+
 def test_run_hpo_fixed_split_returns_best_params():
     X_train, X_test, y_train, y_test = load_data('data/processed')
 
@@ -111,15 +113,54 @@ def test_run_hpo_fixed_split_returns_best_params():
     assert isinstance(result, dict)
     assert 'n_estimators' in result
 
+
 def test_save_and_load_best_params(tmp_path):
     best_params = {'n_estimators': 150, 'max_depth': 10}
     save_best_params(best_params, 'random_forest', str(tmp_path))
     result = load_best_params('random_forest', str(tmp_path))
     assert result == best_params
 
+
 def test_load_best_params_raises_if_missing(tmp_path):
     with pytest.raises(FileNotFoundError):
         load_best_params('random_forest', str(tmp_path))
 
-            
+
+def test_refit_final_model_returns_pipeline():
+    X_train, X_test, y_train, y_test = load_data('data/processed')
+    best_params = {'n_estimators': 50, 'max_depth': 5}
+    result = refit_final_model('random_forest', best_params, X_train, y_train)
+
+    assert isinstance(result, Pipeline)
+    assert hasattr(result.named_steps['model'], 'classes_')
+
+
+def test_compute_metrics_returns_correct_structure():
+    X_train, X_test, y_train, y_test = load_data('data/processed')
+    best_params = {'n_estimators': 50, 'max_depth': 5}
+    pipeline = refit_final_model('random_forest', best_params, X_train, y_train)
+    result = compute_metrics(pipeline, X_test, y_test)
+
+    assert isinstance(result, dict)
+    assert 'weighted avg' in result
+    assert 'f1-score' in result['weighted avg']
+
+
+def test_save_pipeline_creates_file(tmp_path):
+    pipeline = build_pipeline('random_forest', {'n_estimators': 50})
+    save_pipeline(pipeline, 'random_forest', str(tmp_path))
+    
+    assert os.path.exists(os.path.join(str(tmp_path), 'random_forest.pkl'))
+
+
+def test_save_metrics_creates_file(tmp_path):
+    metrics = {'weighted avg': {'f1-score': 0.91}}
+    save_metrics(metrics, 'random_forest', str(tmp_path))
+    path = os.path.join(str(tmp_path), 'random_forest.json')
+    assert os.path.exists(path)
+    with open(path) as f:
+        result = json.load(f)
+    
+    assert result == metrics
+
 

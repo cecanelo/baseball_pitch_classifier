@@ -89,6 +89,9 @@ def main():
     df['p_throws'] = (df['p_throws'] == 'R').astype(int)
     df = select_features(selected_features, target, df)
 
+    df = df.dropna(subset=selected_features)
+    logging.info(f'After dropping NaN rows: {len(df)} rows')
+
     X = df[selected_features]
     y = df[target]
     stratify = y if config['split']['stratify'] else None

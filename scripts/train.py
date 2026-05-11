@@ -1,6 +1,7 @@
 import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
+import warnings
 import pandas as pd
 import argparse
 import os
@@ -15,8 +16,11 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.exceptions import ConvergenceWarning
 from xgboost import XGBClassifier
 from utils import load_config, load_data
+
+warnings.filterwarnings('ignore', category=ConvergenceWarning)
 
 
 def build_pipeline(model_name: str, params: dict) -> Pipeline:
@@ -91,8 +95,13 @@ def run_hpo(model_name: str,
             y_pred = pipeline.predict(X_val)
             return f1_score(y_val, y_pred, average='weighted')
     
+    def log_trial(study, trial):
+        logging.info(f'Trial {trial.number + 1}/{hpo_config["n_trials"]} — '
+                     f'score: {trial.value:.4f} — best so far: {study.best_value:.4f}')
+
+    logging.info(f'Starting HPO for {model_name} — {hpo_config["n_trials"]} trials')
     study = optuna.create_study(direction='maximize')
-    study.optimize(objective, n_trials=hpo_config['n_trials'])
+    study.optimize(objective, n_trials=hpo_config['n_trials'], callbacks=[log_trial])
 
     logging.info(f'Best score: {study.best_value:.4f}')
     for param, value in study.best_params.items():
@@ -114,5 +123,79 @@ def load_best_params(model_name: str, metrics_dir: str) -> dict:
         raise FileNotFoundError(f'Best params not found: {path}. Run with hpo.enabled=true first.')
     with open(path, 'r') as f:
         return json.load(f)
+
+
+def refit_final_model(model_name: str, 
+                      best_params: dict, 
+                      X_train: pd.DataFrame, 
+                      y_train: pd.Series) -> Pipeline:
+    logging.info(f'Refitting final model with best HPO parameters for {model_name}')
+
+    pipeline = build_pipeline(model_name, best_params)
+    pipeline.fit(X_train, y_train)
+    logging.info(f'Fitting of {model_name} complete.')
+
+    return pipeline
+
+
+def compute_metrics(pipeline: Pipeline, X_test: pd.DataFrame, y_test: pd.Series) -> dict:
+    logging.info('Computing metrics.')
+    y_pred = pipeline.predict(X_test)
+    report = classification_report(y_test, y_pred, output_dict=True)
+    logging.info(f'Weighted F1: {report["weighted avg"]["f1-score"]:.4f}')
+
+    return report
+
+
+def save_pipeline(pipeline: Pipeline, model_name: str, models_dir: str) -> None:
+    os.makedirs(models_dir, exist_ok=True)
+    path = os.path.join(models_dir, f'{model_name}.pkl')
+    joblib.dump(pipeline, path)
+    logging.info(f'Pipeline saved to {path}')
+
+
+def save_metrics(metrics: dict, model_name: str, metrics_dir: str) -> None:
+    os.makedirs(metrics_dir, exist_ok=True)
+    path = os.path.join(metrics_dir, f'{model_name}.json')
+    with open(path, 'w') as f:
+        json.dump(metrics, f, indent=2)
+    logging.info(f'Metrics saved to {path}')
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', required=True)
+    parser.add_argument('--model', required=True)
+    args = parser.parse_args()
+
+    data_config  = load_config(args.config)
+    model_config = load_config(args.model)
+
+    model_name    = model_config['model']['name']
+    hpo_config    = model_config['hpo']
+    val_config    = data_config['hpo_validation']
+    processed_dir = data_config['paths']['processed_dir']
+    models_dir    = model_config['paths']['models_dir']
+    metrics_dir   = model_config['paths']['metrics_dir']
+
+    X_train, X_test, y_train, y_test = load_data(processed_dir)
+
+    if hpo_config['enabled']:
+        best_params = run_hpo(model_name, X_train, y_train, hpo_config, val_config)
+        save_best_params(best_params, model_name, metrics_dir)
+    else:
+        best_params = load_best_params(model_name, metrics_dir)
+
+    pipeline = refit_final_model(model_name, best_params, X_train, y_train)
+    metrics  = compute_metrics(pipeline, X_test, y_test)
+
+    save_pipeline(pipeline, model_name, models_dir)
+    save_metrics(metrics, model_name, metrics_dir)
+
+    logging.info(f'Training complete for {model_name}')
+
+
+if __name__ == '__main__':
+    main()
 
 
