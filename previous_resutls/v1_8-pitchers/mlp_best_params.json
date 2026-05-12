@@ -1,0 +1,10 @@
+{
+  "hidden_layer_sizes": [
+    256,
+    128
+  ],
+  "activation": "tanh",
+  "alpha": 0.0027210800782733044,
+  "learning_rate_init": 0.00017385645409083555,
+  "max_iter": 212
+}

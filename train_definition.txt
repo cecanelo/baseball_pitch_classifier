@@ -1,0 +1,76 @@
+def load_config(config_path: str) -> dict:
+    # Already exists — loads and parses a YAML config file
+
+def load_data(processed_dir: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    # Reads X_train, X_test, y_train, y_test CSVs from processed_dir
+    # Squeezes y files from single-column DataFrame to Series
+    # Returns (X_train, X_test, y_train, y_test)
+
+
+
+
+def build_pipeline(model_name: str, params: dict) -> Pipeline:
+    # Instantiates the right sklearn/XGBoost model with params
+    # Wraps in Pipeline([("scaler", StandardScaler()), ("model", ...)])
+    #   for KNN and MLP only — no scaler step for LR, RF, XGBoost
+
+def suggest_params(trial: optuna.Trial, search_space: dict) -> dict:
+    # Reads the Option-A search space from config
+    # Calls trial.suggest_int / suggest_float / suggest_categorical accordingly
+    # Converts list choices to tuples for Optuna hashability (MLP hidden_layer_sizes)
+    # Returns a dict of sampled hyperparameters for this trial
+
+def run_hpo(
+    model_name: str,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    hpo_config: dict,
+    val_config: dict,
+) -> dict:
+    # Defines the Optuna objective as an inner closure function
+    # Creates an Optuna study and runs n_trials
+    # Returns study.best_params
+
+def save_best_params(best_params: dict, model_name: str, metrics_dir: str) -> None:
+    # Saves best_params dict to results/metrics/<model_name>_best_params.json
+    # Called immediately after run_hpo so params survive across sessions
+
+def load_best_params(model_name: str, metrics_dir: str) -> dict:
+    # Loads best_params from results/metrics/<model_name>_best_params.json
+    # Raises FileNotFoundError if file doesn't exist
+    # Called when hpo.enabled is false
+
+def refit_final_model(
+    model_name: str,
+    best_params: dict,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+) -> Pipeline:
+    # Builds a fresh Pipeline using best_params
+    # Fits on the full X_train — no held-out portion
+    # Returns the fitted Pipeline
+
+def compute_metrics(
+    pipeline: Pipeline,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+) -> dict:
+    # Calls pipeline.predict(X_test)
+    # Returns sklearn classification_report as a dict (per-class + weighted avg)
+
+def save_pipeline(pipeline: Pipeline, model_name: str, models_dir: str) -> None:
+    # Creates models_dir if it doesn't exist
+    # joblib.dump(pipeline, path) — one file contains scaler + model
+
+def save_metrics(metrics: dict, model_name: str, metrics_dir: str) -> None:
+    # Creates metrics_dir if it doesn't exist
+    # json.dump(metrics) → results/metrics/<model_name>.json
+
+def main() -> None:
+    # Parses --config and --model CLI args, loads both configs
+    # Calls load_data()
+    # If hpo.enabled is true  → run_hpo() then save_best_params()
+    # If hpo.enabled is false → load_best_params()
+    # Calls refit_final_model() with whichever params were obtained
+    # Calls compute_metrics(), save_pipeline(), save_metrics()
+    # Logs progress at each step

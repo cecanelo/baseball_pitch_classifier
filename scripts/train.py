@@ -17,10 +17,13 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.exceptions import ConvergenceWarning
+from sklearn.preprocessing import LabelEncoder
 from xgboost import XGBClassifier
 from utils import load_config, load_data
 
 warnings.filterwarnings('ignore', category=ConvergenceWarning)
+warnings.filterwarnings('ignore', message='Choices for a categorical distribution')
+
 
 
 def build_pipeline(model_name: str, params: dict) -> Pipeline:
@@ -179,6 +182,12 @@ def main() -> None:
     metrics_dir   = model_config['paths']['metrics_dir']
 
     X_train, X_test, y_train, y_test = load_data(processed_dir)
+
+    if model_name == 'xgboost':
+        le = LabelEncoder()
+        y_train = pd.Series(le.fit_transform(y_train))
+        y_test  = pd.Series(le.transform(y_test))
+        logging.info(f'XGBoost: encoded labels {list(le.classes_)} → {list(range(len(le.classes_)))}')
 
     if hpo_config['enabled']:
         best_params = run_hpo(model_name, X_train, y_train, hpo_config, val_config)
