@@ -24,6 +24,7 @@ def select_features(selected_features: list, target: str, df: pd.DataFrame) -> p
     clean_df = df[cols_to_keep]
     return clean_df
 
+
 def exclude_pitch_types(excluded_pitches: list, df: pd.DataFrame) -> pd.DataFrame:
     """
     Remove rows with null pitch_type and rows matching excluded pitch type codes.
@@ -38,6 +39,7 @@ def exclude_pitch_types(excluded_pitches: list, df: pd.DataFrame) -> pd.DataFram
     df = df.dropna(subset=['pitch_type'])
     clean_df = df[~df['pitch_type'].isin(excluded_pitches)]
     return clean_df
+
 
 def exclude_below_threshold(df: pd.DataFrame, threshold: int) -> pd.DataFrame:
     """
@@ -55,6 +57,17 @@ def exclude_below_threshold(df: pd.DataFrame, threshold: int) -> pd.DataFrame:
     clean_df = df[~df['pitch_type'].isin(rare_pitches)]
     return clean_df
 
+
+def sample_per_class(df: pd.DataFrame, n_per_class: int, random_state: int) -> pd.DataFrame:
+    sampled_groups = []
+    split_df = df.groupby('pitch_type')
+
+    for pitch_type, group_data in split_df:
+        n_to_sample = min(n_per_class, len(group_data))
+        sampled_groups.append(group_data.sample(n_to_sample, random_state=random_state))
+    return pd.concat(sampled_groups).reset_index(drop=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', required=True)
@@ -62,17 +75,19 @@ def main():
     config = load_config(args.config)
 
     selected_features = config['features']
-    target = config['target']
-    excluded_pitches = config['filtering']['exclude_pitch_types']
-    threshold = config['filtering']['min_pitch_count']
-    raw_dir = config['paths']['raw_dir']
-    processed_dir = config['paths']['processed_dir']
-    season = config['season']['start'][:4]
-    test_size = config['split']['test_size']
-    random_state = config['split']['random_state']
+    target =            config['target']
+    excluded_pitches =  config['filtering']['exclude_pitch_types']
+    threshold =         config['filtering']['min_pitch_count']
+    raw_dir =           config['paths']['raw_dir']
+    processed_dir =     config['paths']['processed_dir']
+    season =            config['season']['start'][:4]
+    test_size =         config['split']['test_size']
+    random_state =      config['split']['random_state']
+    n_per_class =       config['sampling']['n_per_class']
       
     raw_csv_path = f'{raw_dir}/pitch_data_{season}.csv'
     logging.info(f'Loading raw data from {raw_csv_path}')
+    
     if not os.path.exists(raw_csv_path):
         raise FileNotFoundError(f"Raw data not found: {raw_csv_path}. Run fetch_data.py first.")
     df = pd.read_csv(raw_csv_path)
@@ -87,10 +102,14 @@ def main():
     # release_pos_x is bimodal due to handedness. Encoding p_throws as 0/1 gives
     # the model context to interpret horizontal features correctly.
     df['p_throws'] = (df['p_throws'] == 'R').astype(int)
+    df['pfx_x_x_p_throws'] = df['pfx_x'] * df['p_throws']
     df = select_features(selected_features, target, df)
 
     df = df.dropna(subset=selected_features)
     logging.info(f'After dropping NaN rows: {len(df)} rows')
+
+    df = sample_per_class(df, n_per_class, random_state)
+    logging.info(f'After sampling: {len(df)} rows.')
 
     X = df[selected_features]
     y = df[target]

@@ -6,10 +6,10 @@ A machine learning project that classifies MLB pitch types from physical measure
 
 ## Overview
 
-- **Goal:** Classify pitch types (FF, SL, CU, etc.) from physical measurements alone — no pitcher identity
-- **Data:** 2023 MLB Statcast — all pitchers, 9 pitch types, 90,000 samples (10,000 per class)
-- **Models:** Decision Tree, KNN, Random Forest, XGBoost
-- **Best result:** XGBoost — weighted F1 = 0.9091 (global model, no pitcher leakage)
+- **Goal:** Classify pitch types (FF, SL, CU, etc.) from physical measurements alone: no pitcher identity
+- **Data:** 2023 MLB Statcast: all pitchers, 9 pitch types, 90,000 samples (10,000 per class)
+- **Models:** Logistic Regression, Decision Tree, KNN, Random Forest, MLP, XGBoost
+- **Best result:** XGBoost: weighted F1 = 0.9081 (global model, no pitcher leakage)
 
 ## Quickstart
 
@@ -21,6 +21,7 @@ python scripts/fetch_data.py    --config configs/data.yaml
 python scripts/preprocess.py    --config configs/data.yaml
 python scripts/train.py         --config configs/data.yaml --model configs/model_xgb.yaml
 ```
+
 
 ## Project Structure
 
@@ -36,18 +37,19 @@ docs/          Feature documentation
 
 ## Key Design Decisions
 
-- **No pitcher identity** in features — model generalizes to unseen pitchers
-- **Global sampling** — 10,000 rows per pitch type to balance classes
-- **HPO via Optuna** — 50 trials per model optimizing weighted F1
-- **Stratified train/test split** — preserves class proportions
+- **No pitcher identity** in features: model generalizes to unseen pitches
+- **Global sampling**: 10,000 rows per pitch type to balance classes
+- **HPO via Optuna**: 50 trials per model optimizing weighted F1
+- **Stratified train/test split**: preserves class proportions
 
-## Results (v2 — all MLB pitchers, 2023)
+## Results (v2: all MLB pitchers, 2023)
 
 | Model | Weighted F1 | Training Time |
 |---|---|---|
-| Decision Tree | 0.8205 | 00:02:59 |
-| KNN | 0.8815 | 00:24:55 |
-| Random Forest | 0.8907 | 01:43:51 |
-| XGBoost | **0.9091** | 01:16:01 |
-
-Rule-based baseline: 0.735
+| Rule-based baseline | 0.5385 | N/A |
+| Logistic Regression | 0.5991 | 05:21:52 |
+| Decision Tree | 0.8206 | 00:02:59 |
+| KNN | 0.8812 | 00:24:55 |
+| Random Forest | 0.8910 | 01:43:51 |
+| MLP | 0.8943 | 11:13:51 |
+| XGBoost | **0.9081** | 01:16:01 |

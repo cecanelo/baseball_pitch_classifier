@@ -8,6 +8,8 @@ physical measurements using 5 machine learning models.
 
 Target audience: ML practitioners and baseball fans via GitHub portfolio and LinkedIn.
 
+UNDER NO CIRCUMSTANCE USE EM DASHES EVER IN THIS PROJECT!
+
 ---
 
 ## Pipeline
@@ -148,7 +150,7 @@ final model saved to `results/models/`.
   Performance on unseen pitchers may degrade.
 - Class imbalance is significant. FF has ~38% of pitches, FS has ~0.6%.
   Models are evaluated with weighted F1 to account for this.
-- Rule-based baseline achieves accuracy=0.753, F1=0.735. ML models must beat this.
+- Rule-based baseline achieves accuracy=0.54, F1=0.5385. ML models must beat this.
 - CU/KC and FF/FC are the hardest pairs to separate. This is inherent to the data,
   not a modeling artifact.
 - `plate_x` and `plate_z` have ~1% outliers (wild pitches). Consider clipping
@@ -158,7 +160,9 @@ final model saved to `results/models/`.
 
 ## Rule-Based Baseline
 
-A hand-crafted if/else classifier was built during EDA as a baseline.
-Results: accuracy=0.753, weighted F1=0.735.
-Any trained model with F1 below 0.735 should be investigated for bugs.
-See `notebooks/data_exploration.ipynb` for full confusion matrix and analysis.
+A hand-crafted if/else classifier was built as a baseline using mean feature
+values derived from the training set. Thresholds are set as midpoints between
+class means and refined via confusion matrix analysis.
+Results: accuracy=0.54, weighted F1=0.5385.
+Any trained model with F1 below 0.5385 should be investigated for bugs.
+See `notebooks/rule_based_classifier.ipynb` for full analysis.

@@ -1,13 +1,13 @@
 # ─────────────────────────────────────────────
-# model_knn.yaml
-# K-Nearest Neighbors configuration + HPO
+# model_dt.yaml
+# Decision Tree configuration + HPO
 # ─────────────────────────────────────────────
 
 model:
-  name: knn
+  name: decision_tree
   params:
-    n_neighbors: 10
-    n_jobs:      -1
+    max_depth:    10
+    random_state: 42
 
 hpo:
   enabled:  false
@@ -16,26 +16,27 @@ hpo:
     primary:   f1_weighted
     secondary: accuracy
   search_space:
-    n_neighbors:
+    max_depth:
       type: int
       low:  3
-      high: 30
-    weights:
-      type:    categorical
-      choices: ["uniform", "distance"]
-    metric:
-      type:    categorical
-      choices: ["euclidean", "manhattan", "minkowski"]
-    p:
+      high: 20
+    min_samples_split:
+      type: int
+      low:  2
+      high: 20
+    min_samples_leaf:
       type: int
       low:  1
-      high: 2
+      high: 10
+    criterion:
+      type:    categorical
+      choices: ["gini", "entropy"]
 
 output:
   save_model:              true
   save_metrics:            true
   save_confusion_matrix:   true
-  save_feature_importance: false  # not applicable for KNN
+  save_feature_importance: true
 
 paths:
   models_dir:  "results/models"

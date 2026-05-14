@@ -9,25 +9,6 @@ season:
   start: "2023-03-30"
   end:   "2023-10-01"
 
-# Pitchers to fetch
-pitchers:
-  - first: "Shohei"
-    last:  "Ohtani"
-  - first: "Spencer"
-    last:  "Strider"
-  - first: "Zack"
-    last:  "Wheeler"
-  - first: "Gerrit"
-    last:  "Cole"
-  - first: "Clayton"
-    last:  "Kershaw"
-  - first: "Blake"
-    last:  "Snell"
-  - first: "Max"
-    last:  "Fried"
-  - first: "Framber"
-    last:  "Valdez"
-
 # Features used for classification
 features:
   - release_speed         # pitch velocity (mph)
@@ -40,18 +21,29 @@ features:
   - plate_z               # vertical location at plate (ft)
   - release_extension     # extension toward plate (ft)
   - p_throws              # pitcher handedness (0=L, 1=R)
+  - spin_axis             # spin axis angle (degrees)
 
 # Target variable
 target: "pitch_type"
 
 # Pitch type filtering
 filtering:
-  min_pitch_count: 50          # drop pitch types with fewer than this many samples
-  exclude_pitch_types:         # unknown or irrelevant pitch types
+  min_pitch_count: 50
+  exclude_pitch_types:
     - "UN"
     - "PO"
     - "IN"
     - ""
+    - "EP"    # eephus — novelty pitch, too rare and not representative
+    - "FO"    # forkball — nearly extinct in modern MLB
+    - "FA"    # generic fastball — ambiguous/miscategorized
+    - "SV"    # screwball — extremely rare
+    - "CS"
+    - "KN"
+    - "SC"
+
+sampling:
+  n_per_class: 10000
 
 # Train/test split
 split:

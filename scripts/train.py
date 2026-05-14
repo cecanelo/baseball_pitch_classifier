@@ -2,15 +2,19 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 import warnings
+import time
 import pandas as pd
 import argparse
 import os
 import json
 import joblib
 import optuna
+
+optuna.logging.set_verbosity(optuna.logging.WARNING)
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -29,6 +33,7 @@ warnings.filterwarnings('ignore', message='Choices for a categorical distributio
 def build_pipeline(model_name: str, params: dict) -> Pipeline:
     model_map = {
         'logistic_regression': LogisticRegression,
+        'decision_tree':       DecisionTreeClassifier, 
         'random_forest':       RandomForestClassifier,
         'xgboost':             XGBClassifier,
         'knn':                 KNeighborsClassifier,
@@ -99,8 +104,10 @@ def run_hpo(model_name: str,
             return f1_score(y_val, y_pred, average='weighted')
     
     def log_trial(study, trial):
-        logging.info(f'Trial {trial.number + 1}/{hpo_config["n_trials"]} — '
-                     f'score: {trial.value:.4f} — best so far: {study.best_value:.4f}')
+        ts = time.strftime('%H:%M:%S')
+        is_best = ' — new best' if trial.value >= study.best_value else ''
+        logging.info(f'[{ts}] Trial {trial.number + 1}/{hpo_config["n_trials"]} — '
+                     f'score: {trial.value:.4f}{is_best}')
 
     logging.info(f'Starting HPO for {model_name} — {hpo_config["n_trials"]} trials')
     study = optuna.create_study(direction='maximize')
@@ -145,8 +152,6 @@ def compute_metrics(pipeline: Pipeline, X_test: pd.DataFrame, y_test: pd.Series)
     logging.info('Computing metrics.')
     y_pred = pipeline.predict(X_test)
     report = classification_report(y_test, y_pred, output_dict=True)
-    logging.info(f'Weighted F1: {report["weighted avg"]["f1-score"]:.4f}')
-
     return report
 
 
@@ -182,6 +187,7 @@ def main() -> None:
     metrics_dir   = model_config['paths']['metrics_dir']
 
     X_train, X_test, y_train, y_test = load_data(processed_dir)
+    start_time = time.perf_counter()
 
     if model_name == 'xgboost':
         le = LabelEncoder()
@@ -197,11 +203,16 @@ def main() -> None:
 
     pipeline = refit_final_model(model_name, best_params, X_train, y_train)
     metrics  = compute_metrics(pipeline, X_test, y_test)
+    logging.info(f'Weighted F1 ({model_name}): {metrics["weighted avg"]["f1-score"]:.4f}')
+
+    elapsed = time.perf_counter() - start_time
+    metrics['training_time_seconds'] = round(elapsed, 2)
+    elapsed_fmt = time.strftime('%H:%M:%S', time.gmtime(elapsed))
 
     save_pipeline(pipeline, model_name, models_dir)
     save_metrics(metrics, model_name, metrics_dir)
 
-    logging.info(f'Training complete for {model_name}')
+    logging.info(f'Training complete for {model_name} in {elapsed_fmt}')
 
 
 if __name__ == '__main__':
