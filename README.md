@@ -5,9 +5,8 @@ measurements using 2023 Statcast data.
 
 ## Motivation
 
-A learning project combining two interests: machine learning and baseball.
 The goal was to build a complete ML pipeline from data collection to evaluation,
-using a domain that makes the results easy to reason about.
+using a domain that makes the results easy to reason about (at least to me).
 
 ## Results (2023 MLB, all pitchers, 9 pitch types)
 
