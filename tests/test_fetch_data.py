@@ -1,41 +1,28 @@
 import pandas as pd
 import sys
 import os
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 
-from fetch_data import get_missing_pitchers
+from fetch_data import fetch_pitcher_data, save_pitcher_data
+
+def test_fetch_pitcher_data_returns_dataframe_on_success():
+    dummy_df = pd.DataFrame({'pitch_type': ['FF', 'SL']})
+    with patch('fetch_data.statcast', return_value=dummy_df):
+        result = fetch_pitcher_data('2023-07-01', '2023-07-31')
+    assert isinstance(result, pd.DataFrame)
 
 
-PITCHERS = [
-    {'first': 'Shohei', 'last': 'Ohtani'},
-    {'first': 'Spencer', 'last': 'Strider'},
-    {'first': 'Gerrit', 'last': 'Cole'},
-]
+def test_fetch_pitcher_data_returns_none_after_all_retries_fail():
+    with patch('fetch_data.statcast', side_effect=Exception('API error')):
+        result = fetch_pitcher_data('2023-07-01', '2023-07-31')
+    assert result is None
 
 
-# ── get_missing_pitchers ──────────────────────────────────────────────────────
-
-def test_get_missing_pitchers_returns_all_when_no_csv(tmp_path):
+def test_save_pitcher_data_creates_csv(tmp_path):
+    df = pd.DataFrame({'pitch_type': ['FF', 'SL'], 'release_speed': [95.0, 88.0]})
     csv_path = tmp_path / 'pitch_data_2023.csv'
-    result = get_missing_pitchers(PITCHERS, str(csv_path))
-    assert result == PITCHERS
-
-def test_get_missing_pitchers_returns_only_missing(tmp_path):
-    csv_path = tmp_path / 'pitch_data_2023.csv'
-    df = pd.DataFrame({'player_name': ['Ohtani, Shohei', 'Cole, Gerrit']})
-    df.to_csv(csv_path, index=False)
-
-    result = get_missing_pitchers(PITCHERS, str(csv_path))
-    assert len(result) == 1
-    assert result[0]['last'] == 'Strider'
-
-def test_get_missing_pitchers_returns_empty_when_all_present(tmp_path):
-    csv_path = tmp_path / 'pitch_data_2023.csv'
-    df = pd.DataFrame({
-        'player_name': ['Ohtani, Shohei', 'Strider, Spencer', 'Cole, Gerrit']
-    })
-    df.to_csv(csv_path, index=False)
-
-    result = get_missing_pitchers(PITCHERS, str(csv_path))
-    assert result == []
+    save_pitcher_data(df, str(csv_path))
+    assert csv_path.exists()
+    assert pd.read_csv(csv_path).equals(df)

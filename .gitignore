@@ -4,8 +4,8 @@ data/processed/
 
 # Results
 results/models/
-results/metrics/
 results/figures/
+previous_results/
 
 # Logs
 logs/

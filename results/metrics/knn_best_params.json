@@ -1,0 +1,6 @@
+{
+  "n_neighbors": 12,
+  "weights": "distance",
+  "metric": "minkowski",
+  "p": 1
+}

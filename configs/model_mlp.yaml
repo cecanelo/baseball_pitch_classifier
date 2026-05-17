@@ -7,7 +7,7 @@
 model:
   name: mlp
   params:
-    hidden_layer_sizes: [256, 128]
+    hidden_layer_sizes: [64, 32]
     max_iter:           300
     random_state:       42
     early_stopping:     true      # stops early if no improvement
@@ -24,11 +24,10 @@ hpo:
     hidden_layer_sizes:
       type:    categorical
       choices:
+        - [16, 8]
+        - [32, 16]
         - [64, 32]
         - [128, 64]
-        - [256, 128]
-        - [256, 128, 64]
-        - [512, 256]
     activation:
       type:    categorical
       choices: ["relu", "tanh"]

@@ -4,9 +4,11 @@
 
 Baseball pitch classifier built as a learning exercise and portfolio project.
 Uses 2023 MLB Statcast data to classify pitch types (FF, SL, CU, etc.) from
-physical measurements using 5 machine learning models.
+physical measurements using 6 machine learning models.
 
 Target audience: ML practitioners and baseball fans via GitHub portfolio and LinkedIn.
+
+UNDER NO CIRCUMSTANCE USE EM DASHES EVER IN THIS PROJECT!
 
 ---
 
@@ -17,15 +19,16 @@ Run scripts in this order:
 ```
 python scripts/fetch_data.py    --config configs/data.yaml
 python scripts/preprocess.py    --config configs/data.yaml
-python scripts/train.py         --config configs/data.yaml --model configs/model_lr.yaml
+python scripts/train.py         --config configs/data.yaml --model configs/model_dt.yaml
+python scripts/train.py         --config configs/data.yaml --model configs/model_knn.yaml
 python scripts/train.py         --config configs/data.yaml --model configs/model_rf.yaml
 python scripts/train.py         --config configs/data.yaml --model configs/model_xgb.yaml
-python scripts/train.py         --config configs/data.yaml --model configs/model_knn.yaml
 python scripts/train.py         --config configs/data.yaml --model configs/model_mlp.yaml
+python scripts/train.py         --config configs/data.yaml --model configs/model_lr.yaml
 python scripts/evaluate.py      --config configs/data.yaml
 ```
 
-Final comparison and visualization: `notebooks/model_comparison.ipynb`
+Analysis: `notebooks/result_analysis.ipynb`
 
 ---
 
@@ -48,39 +51,41 @@ data/
   processed/          -- X_train, X_test, y_train, y_test CSVs
 docs/                 -- Feature glossaries and analysis summaries
 notebooks/
-  data_exploration.ipynb    -- EDA, visualizations, rule-based baseline
-  model_comparison.ipynb    -- Final model results and conclusions
+  N_selection.ipynb          -- Determines n_per_class from July 2023 sample
+  rule_based_classifier.ipynb -- Hand-crafted baseline with threshold derivation
+  result_analysis.ipynb       -- Full model comparison and statistical analysis
 results/
-  models/             -- Saved model files
-  metrics/            -- Per-model metrics JSON files
-  figures/            -- Confusion matrices and feature importance plots
+  models/             -- Saved model pipeline files (gitignored)
+  metrics/            -- Per-model metrics JSON files and predictions CSV
+  figures/            -- Confusion matrices, heatmaps, bootstrap distributions
 scripts/
-  fetch_data.py       -- Downloads Statcast data via pybaseball
-  preprocess.py       -- Filters, encodes, splits data
-  train.py            -- Trains one model with Optuna HPO (not yet built)
-  evaluate.py         -- Generates metrics and plots (not yet built)
+  fetch_data.py       -- Downloads all 2023 MLB Statcast data via pybaseball
+  preprocess.py       -- Filters, samples, encodes, splits data
+  train.py            -- Trains one model with Optuna HPO
+  evaluate.py         -- Generates predictions CSV and evaluation summary
 ```
 
 ---
 
 ## Data
 
-Source: MLB Statcast via pybaseball (`statcast_pitcher`)
+Source: MLB Statcast via pybaseball (`statcast()`)
 
 Season: 2023 (2023-03-30 to 2023-10-01)
 
-Pitchers: 4 right-handed (Ohtani, Strider, Wheeler, Cole),
-          4 left-handed (Kershaw, Snell, Fried, Valdez)
+Scope: All MLB pitchers (720,684 raw pitches)
 
-Raw file: `data/raw/pitch_data_2023.csv` (118 columns, ~20k rows)
+Raw file: `data/raw/pitch_data_2023.csv` (118 columns, ~720k rows)
 
-Target variable: `pitch_type` (9 classes after filtering: FF, SI, FC, SL, ST, CU, KC, CH, FS)
+Target variable: `pitch_type` (9 classes: FF, SI, FC, SL, ST, CU, KC, CH, FS)
+
+Sampling: 10,000 rows per class globally (90,000 total, 72,000 train / 18,000 test)
 
 ---
 
 ## Features
 
-10 features defined in `configs/data.yaml`:
+11 features defined in `configs/data.yaml`:
 
 | Feature | Description |
 |---|---|
@@ -94,6 +99,7 @@ Target variable: `pitch_type` (9 classes after filtering: FF, SI, FC, SL, ST, CU
 | plate_z | Vertical plate location (ft) |
 | release_extension | Extension toward plate at release (ft) |
 | p_throws | Pitcher handedness, encoded as 1=R / 0=L |
+| spin_axis | Spin axis angle (degrees) |
 
 Full feature documentation: `docs/model_features.md`
 
@@ -106,8 +112,17 @@ Full feature documentation: `docs/model_features.md`
 happen only in `preprocess.py`. This preserves the ability to add features
 without re-downloading data.
 
+**No pitcher identity leakage**
+V1 trained on 8 pitchers with a random split, producing inflated F1 (0.98-0.99)
+because the model learned pitcher signatures, not mechanics. V2 uses all MLB
+pitchers with global sampling so the model must generalize across pitchers.
+
+**Global sampling before train/test split**
+10,000 rows per pitch type sampled globally after cleaning, before splitting.
+This prevents class imbalance and ensures no pitcher dominates a class.
+
 **Scaling is deferred to train.py, not preprocess.py**
-Tree-based models (RF, XGBoost) do not need scaling. KNN and MLP do.
+Tree-based models (RF, XGBoost, DT) do not need scaling. KNN and MLP do.
 Applying scaling per-model in `train.py` avoids applying it unnecessarily
 and prevents test set leakage from a scaler fit on the full dataset.
 
@@ -117,7 +132,6 @@ Adding `p_throws` gives the model context to interpret horizontal features
 correctly. Encoded in `preprocess.py` before the train/test split.
 
 **Stratified train/test split**
-Class imbalance is significant (FF ~38% of pitches, FS ~0.6%).
 `stratify=True` in `data.yaml` ensures class proportions are preserved
 in both train and test sets.
 
@@ -143,14 +157,13 @@ final model saved to `results/models/`.
 
 ## Known Limitations
 
-- Dataset covers only 8 pitchers from the 2023 season. The classifier partially
-  learns pitcher-specific signatures rather than universal pitch mechanics.
-  Performance on unseen pitchers may degrade.
-- Class imbalance is significant. FF has ~38% of pitches, FS has ~0.6%.
-  Models are evaluated with weighted F1 to account for this.
-- Rule-based baseline achieves accuracy=0.753, F1=0.735. ML models must beat this.
-- CU/KC and FF/FC are the hardest pairs to separate. This is inherent to the data,
-  not a modeling artifact.
+- SL (Slider) is the hardest class (mean F1=0.76). No single feature separates
+  it from ST and FC. This is a data limitation, not a modeling artifact.
+- 3.5% of test pitches are genuinely ambiguous: all models fail on them and their
+  feature values are indistinguishable from the rest of the test set.
+- XGBoost label encoding is handled outside the pipeline via LabelEncoder in
+  train.py. The encoder is not saved with the model. evaluate.py detects integer
+  predictions and maps them back to string labels using sorted class order.
 - `plate_x` and `plate_z` have ~1% outliers (wild pitches). Consider clipping
   in a future version of `preprocess.py`.
 
@@ -158,7 +171,27 @@ final model saved to `results/models/`.
 
 ## Rule-Based Baseline
 
-A hand-crafted if/else classifier was built during EDA as a baseline.
-Results: accuracy=0.753, weighted F1=0.735.
-Any trained model with F1 below 0.735 should be investigated for bugs.
-See `notebooks/data_exploration.ipynb` for full confusion matrix and analysis.
+A hand-crafted if/else classifier was built as a baseline using mean feature
+values derived from the training set. Thresholds are set as midpoints between
+class means and refined via confusion matrix analysis.
+Results: accuracy=0.54, weighted F1=0.5385.
+Any trained model with F1 below 0.5385 should be investigated for bugs.
+See `notebooks/rule_based_classifier.ipynb` for full analysis.
+
+---
+
+## Final Results
+
+| Model | Weighted F1 | Training Time |
+|---|---|---|
+| Rule-based baseline | 0.5385 | N/A |
+| Logistic Regression | 0.5991 | 05:21:52 |
+| Decision Tree | 0.8206 | 00:02:59 |
+| KNN | 0.8812 | 00:24:55 |
+| Random Forest | 0.8910 | 01:43:51 |
+| MLP | 0.8943 | 11:13:51 |
+| XGBoost | 0.9081 | 01:16:01 |
+
+XGBoost is the best model by a statistically significant margin (McNemar p<0.0033).
+RF and MLP are statistically equivalent (McNemar p=0.13). RF is the better
+practical choice given it trains in 1h 44m vs MLP's 11h 13m.

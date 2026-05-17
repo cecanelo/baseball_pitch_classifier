@@ -25,6 +25,16 @@ def test_build_pipeline_adds_scaler_for_mlp():
     assert 'scaler' in result.named_steps
 
 
+def test_build_pipeline_no_scaler_for_decision_tree():
+    result = build_pipeline('decision_tree', {})
+    assert 'scaler' not in result.named_steps
+
+
+def test_build_pipeline_returns_pipeline_for_decision_tree():
+    result = build_pipeline('decision_tree', {})
+    assert isinstance(result, Pipeline)
+
+
 def test_build_pipeline_no_scaler_for_random_forest():
     result = build_pipeline('random_forest', {})
     assert 'scaler' not in result.named_steps
