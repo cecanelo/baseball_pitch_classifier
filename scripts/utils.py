@@ -27,20 +27,21 @@ def load_config(config_path: str) -> dict:
             raise ValueError(f"Failed to parse config file {config_path}: {e}")
         
 
-def load_data(processed_dir: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    for filename in ['X_train.csv', 'X_test.csv', 'y_train.csv', 'y_test.csv']:
+def load_data(processed_dir: str, train_x: str = 'X_train.csv', train_y: str = 'y_train.csv') -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    for filename in [train_x, 'X_test.csv', train_y, 'y_test.csv']:
         path = os.path.join(processed_dir, filename)
         if not os.path.exists(path):
             raise FileNotFoundError(f'Processed file not found: {path}. Run preprocess.py first.')
-    
-    X_train = pd.read_csv(os.path.join(processed_dir, 'X_train.csv'))
-    X_test = pd.read_csv(os.path.join(processed_dir, 'X_test.csv'))
-    y_train = pd.read_csv(os.path.join(processed_dir, 'y_train.csv')).squeeze()
-    y_test = pd.read_csv(os.path.join(processed_dir, 'y_test.csv')).squeeze()
-    
+
+    X_train = pd.read_csv(os.path.join(processed_dir, train_x))
+    X_test  = pd.read_csv(os.path.join(processed_dir, 'X_test.csv'))
+    y_train = pd.read_csv(os.path.join(processed_dir, train_y)).squeeze()
+    y_test  = pd.read_csv(os.path.join(processed_dir, 'y_test.csv')).squeeze()
+
     logging.info(f'Loaded {len(X_train)} training rows.')
     logging.info(f'Loaded {len(X_test)} test rows.')
-    
+
     return X_train, X_test, y_train, y_test
+
 
 

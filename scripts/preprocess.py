@@ -65,7 +65,7 @@ def sample_per_class(df: pd.DataFrame, n_per_class: int, random_state: int) -> p
     for pitch_type, group_data in split_df:
         n_to_sample = min(n_per_class, len(group_data))
         sampled_groups.append(group_data.sample(n_to_sample, random_state=random_state))
-    return pd.concat(sampled_groups).reset_index(drop=True)
+    return pd.concat(sampled_groups)
 
 
 def main():
@@ -93,6 +93,8 @@ def main():
     df = pd.read_csv(raw_csv_path)
     logging.info(f'Loaded {len(df)} rows')
 
+    ID_COLS = ['game_pk', 'at_bat_number', 'pitch_number']
+    
     df = exclude_pitch_types(excluded_pitches, df)
     logging.info(f'After excluding pitch types: {len(df)} rows')
 
@@ -103,6 +105,9 @@ def main():
     # the model context to interpret horizontal features correctly.
     df['p_throws'] = (df['p_throws'] == 'R').astype(int)
     df['pfx_x_x_p_throws'] = df['pfx_x'] * df['p_throws']
+
+    id_pool = df[ID_COLS].copy()
+
     df = select_features(selected_features, target, df)
 
     df = df.dropna(subset=selected_features)
@@ -120,13 +125,17 @@ def main():
                                                         random_state=random_state)
 
     os.makedirs(processed_dir, exist_ok=True)
+
+    test_identifiers = id_pool.loc[X_test.index]
+    test_identifiers.to_csv(f'{processed_dir}/test_identifiers.csv', index=False)
+    logging.info(f'Saved test identifiers to {processed_dir}/test_identifiers.csv')
+
     X_train.to_csv(f'{processed_dir}/X_train.csv', index=False)
     X_test.to_csv(f'{processed_dir}/X_test.csv', index=False)
     y_train.to_csv(f'{processed_dir}/y_train.csv', index=False)
     y_test.to_csv(f'{processed_dir}/y_test.csv', index=False)
     logging.info(f'Saved train/test splits to {processed_dir}')
     logging.info(f'Train: {len(X_train)} rows, Test: {len(X_test)} rows')
-
 
 if __name__ == "__main__":
     main()

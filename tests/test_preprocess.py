@@ -94,3 +94,9 @@ def test_sample_per_class_total_row_count():
     df = pd.DataFrame({'pitch_type': ['FF'] * 500 + ['SL'] * 500})
     result = pp.sample_per_class(df, n_per_class=100, random_state=1)
     assert len(result) == 200
+
+
+def test_sample_per_class_preserves_index():
+    df = pd.DataFrame({'pitch_type': ['FF'] * 500 + ['SL'] * 500})
+    result = pp.sample_per_class(df, n_per_class=100, random_state=1)
+    assert result.index.isin(df.index).all()

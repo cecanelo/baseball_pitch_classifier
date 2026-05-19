@@ -35,6 +35,11 @@ def test_build_pipeline_returns_pipeline_for_decision_tree():
     assert isinstance(result, Pipeline)
 
 
+def test_build_pipeline_returns_pipeline_for_xgboost_specialist():
+    result = build_pipeline('xgboost_specialist', {})
+    assert isinstance(result, Pipeline)
+
+
 def test_build_pipeline_no_scaler_for_random_forest():
     result = build_pipeline('random_forest', {})
     assert 'scaler' not in result.named_steps

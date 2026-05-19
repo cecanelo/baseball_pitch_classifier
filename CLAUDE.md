@@ -25,7 +25,9 @@ python scripts/train.py         --config configs/data.yaml --model configs/model
 python scripts/train.py         --config configs/data.yaml --model configs/model_xgb.yaml
 python scripts/train.py         --config configs/data.yaml --model configs/model_mlp.yaml
 python scripts/train.py         --config configs/data.yaml --model configs/model_lr.yaml
-python scripts/evaluate.py      --config configs/data.yaml
+python scripts/preprocess_specialist.py --config configs/data.yaml
+python scripts/train.py         --config configs/data.yaml --model configs/model_xgb_specialist.yaml
+python scripts/evaluate.py      --config configs/data.yaml --hierarchical
 ```
 
 Analysis: `notebooks/result_analysis.ipynb`
@@ -157,10 +159,10 @@ final model saved to `results/models/`.
 
 ## Known Limitations
 
-- SL (Slider) is the hardest class (mean F1=0.76). No single feature separates
+- SL (Slider) is the hardest class (mean F1=0.77). No single feature separates
   it from ST and FC. This is a data limitation, not a modeling artifact.
-- 3.5% of test pitches are genuinely ambiguous: all models fail on them and their
-  feature values are indistinguishable from the rest of the test set.
+- 3.3% of test pitches are genuinely ambiguous: no model can classify them
+  correctly and their feature values are indistinguishable from the rest of the test set.
 - XGBoost label encoding is handled outside the pipeline via LabelEncoder in
   train.py. The encoder is not saved with the model. evaluate.py detects integer
   predictions and maps them back to string labels using sorted class order.
@@ -191,7 +193,9 @@ See `notebooks/rule_based_classifier.ipynb` for full analysis.
 | Random Forest | 0.8910 | 01:43:51 |
 | MLP | 0.8943 | 11:13:51 |
 | XGBoost | 0.9081 | 01:16:01 |
+| Hierarchical XGBoost | 0.9130 | 01:54:58 |
 
-XGBoost is the best model by a statistically significant margin (McNemar p<0.0033).
-RF and MLP are statistically equivalent (McNemar p=0.13). RF is the better
-practical choice given it trains in 1h 44m vs MLP's 11h 13m.
+The hierarchical XGBoost is the best model (McNemar p=0.000002 vs base XGBoost).
+Among single models, XGBoost is best. RF and MLP are statistically equivalent
+(McNemar p=0.13). RF is the better practical choice given it trains in 1h 44m
+vs MLP's 11h 13m.

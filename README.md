@@ -18,19 +18,22 @@ using a domain that makes the results easy to reason about (at least to me).
 | KNN | 0.8812 | 00:24:55 |
 | Random Forest | 0.8910 | 01:43:51 |
 | MLP | 0.8943 | 11:13:51 |
-| XGBoost | **0.9081** | 01:16:01 |
+| XGBoost | 0.9081 | 01:16:01 |
+| Hierarchical XGBoost | **0.9130** | 01:54:58 |
 
-Random Forest and MLP are statistically equivalent (McNemar p=0.13)
-despite MLP taking 6x longer to train. XGBoost is significantly better
-than all other models (p<0.0033 after Bonferroni correction).
+The hierarchical XGBoost combines a 9-class base model with a specialist
+trained on SL, FC, and ST only. Its improvement over base XGBoost is
+statistically significant (McNemar p=0.000002). Random Forest and MLP are
+statistically equivalent (McNemar p=0.13) despite MLP taking 6x longer to
+train.
 
 ## Key Findings
 
-- **SL (Slider) is the hardest pitch type** (mean F1=0.76 across all models).
+- **SL (Slider) is the hardest pitch type** (mean F1=0.77 across all models).
   No single feature separates it from ST (Sweeper) or FC (Cutter). This is a
   data limitation, not a modeling failure.
-- **3.5% of test pitches are genuinely ambiguous**: all 5 models failed on them,
-  and their feature values are indistinguishable from the rest of the test set.
+- **3.3% of test pitches are genuinely ambiguous**: no model can classify them
+  correctly, and their feature values are indistinguishable from the rest of the test set.
 - **XGBoost uniquely resolves 232 borderline pitches** (1.3% of test set) that
   both RF and MLP classify incorrectly, mostly in the SL/FC region.
 - **Bimodal feature distributions** in pfx_x and spin_axis are caused by pitcher
@@ -59,7 +62,9 @@ python scripts/train.py         --config configs/data.yaml --model configs/model
 python scripts/train.py         --config configs/data.yaml --model configs/model_knn.yaml
 python scripts/train.py         --config configs/data.yaml --model configs/model_mlp.yaml
 python scripts/train.py         --config configs/data.yaml --model configs/model_lr.yaml
-python scripts/evaluate.py      --config configs/data.yaml
+python scripts/preprocess_specialist.py --config configs/data.yaml
+python scripts/train.py         --config configs/data.yaml --model configs/model_xgb_specialist.yaml
+python scripts/evaluate.py      --config configs/data.yaml --hierarchical
 ```
 
 ## Project Structure
@@ -69,7 +74,7 @@ configs/       YAML configs for data pipeline and each model
 data/          Raw and processed data (gitignored)
 notebooks/     N selection, rule-based baseline, result analysis
 scripts/       fetch_data, preprocess, train, evaluate
-tests/         Unit tests (43 passing)
+tests/         Unit tests (49 passing)
 results/
   metrics/     Per-model metrics JSON files and predictions CSV
   models/      Saved model pipelines (gitignored)

@@ -57,6 +57,10 @@ hpo_validation:
   n_folds:  5           # used only when strategy is kfold
   val_size: 0.2         # used only when strategy is fixed_split
 
+specialist:
+  pitch_types: ['SL', 'FC', 'ST']
+  n_per_class: 24000
+
 # Paths
 paths:
   raw_dir:       "data/raw"

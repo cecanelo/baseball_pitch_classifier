@@ -10,7 +10,7 @@ from sklearn.tree import DecisionTreeClassifier
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 
-from evaluate import load_models, generate_predictions, save_predictions
+from evaluate import load_models, generate_predictions, save_predictions, generate_hierarchical_predictions
 
 
 def make_real_pipeline():
@@ -81,6 +81,41 @@ def test_generate_predictions_probs_are_valid_json():
     parsed = json.loads(result['xgboost_probs'].iloc[0])
     assert '0' in parsed
     assert '1' in parsed
+
+
+# ── generate_hierarchical_predictions ────────────────────────────────────────
+
+def test_generate_hierarchical_predictions_returns_series():
+    # sorted unique: FC=0, FF=1, SL=2, ST=3
+    # predictions: FF, SL, ST, FC -> 1, 2, 3, 0
+    # specialist_mask: False, True, True, True (SL, ST, FC)
+    # specialist predicts 3 rows: FC=0, SL=1, ST=2
+    X_test = pd.DataFrame({'release_speed': [95.0, 85.0, 82.0, 88.0]})
+    y_test = pd.Series(['FF', 'SL', 'ST', 'FC'])
+
+    xgb = MagicMock()
+    xgb.predict.return_value = np.array([np.int64(1), np.int64(2), np.int64(3), np.int64(0)])
+
+    specialist = MagicMock()
+    specialist.predict.return_value = np.array([np.int64(1), np.int64(2), np.int64(0)])
+
+    result = generate_hierarchical_predictions(xgb, specialist, X_test, y_test)
+    assert isinstance(result, pd.Series)
+    assert len(result) == 4
+
+
+def test_generate_hierarchical_predictions_non_specialist_unchanged():
+    X_test = pd.DataFrame({'release_speed': [95.0, 85.0]})
+    y_test = pd.Series(['FF', 'SL', 'ST', 'FC', 'CH', 'CU', 'KC', 'SI', 'FS'])
+
+    xgb = MagicMock()
+    xgb.predict.return_value = np.array([np.int64(3), np.int64(3)])
+
+    specialist = MagicMock()
+    specialist.predict.return_value = np.array([], dtype=np.int64)
+
+    result = generate_hierarchical_predictions(xgb, specialist, X_test, y_test)
+    assert all(result == 'FF')
 
 
 # ── save_predictions ──────────────────────────────────────────────────────────

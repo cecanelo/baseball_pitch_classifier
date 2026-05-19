@@ -36,6 +36,7 @@ def build_pipeline(model_name: str, params: dict) -> Pipeline:
         'decision_tree':       DecisionTreeClassifier, 
         'random_forest':       RandomForestClassifier,
         'xgboost':             XGBClassifier,
+        'xgboost_specialist':  XGBClassifier,
         'knn':                 KNeighborsClassifier,
         'mlp':                 MLPClassifier,
         }
@@ -186,13 +187,18 @@ def main() -> None:
     models_dir    = model_config['paths']['models_dir']
     metrics_dir   = model_config['paths']['metrics_dir']
 
-    X_train, X_test, y_train, y_test = load_data(processed_dir)
+    train_x = model_config.get('data', {}).get('train_x', 'X_train.csv')
+    train_y = model_config.get('data', {}).get('train_y', 'y_train.csv')
+    X_train, X_test, y_train, y_test = load_data(processed_dir, train_x=train_x, train_y=train_y)
+
     start_time = time.perf_counter()
 
-    if model_name == 'xgboost':
+    if model_name in ['xgboost', 'xgboost_specialist']:
         le = LabelEncoder()
         y_train = pd.Series(le.fit_transform(y_train))
-        y_test  = pd.Series(le.transform(y_test))
+        mask = y_test.isin(le.classes_)
+        X_test = X_test[mask]
+        y_test = pd.Series(le.transform(y_test[mask]))
         logging.info(f'XGBoost: encoded labels {list(le.classes_)} → {list(range(len(le.classes_)))}')
 
     if hpo_config['enabled']:

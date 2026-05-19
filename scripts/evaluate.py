@@ -2,6 +2,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 import pandas as pd
+import numpy as np
 import os
 import json
 import argparse
@@ -54,6 +55,21 @@ def generate_predictions(models: dict, X_test: pd.DataFrame, y_test: pd.Series) 
     return df
         
 
+def generate_hierarchical_predictions(xgb_pipeline, specialist_pipeline, X_test: pd.DataFrame, y_test: pd.Series) -> pd.Series:
+    class_map_9 = {i: label for i, label in enumerate(sorted(y_test.unique()))}
+    class_map_3 = {i: label for i, label in enumerate(sorted(['FC', 'SL', 'ST']))}
+
+    xgb_preds = np.array(pd.Series(xgb_pipeline.predict(X_test)).map(class_map_9), dtype=object)
+    specialist_mask = pd.Series(xgb_preds).isin(['SL', 'FC', 'ST']).values
+
+    spec_preds = pd.Series(specialist_pipeline.predict(X_test[specialist_mask])).map(class_map_3).values
+
+    combined = xgb_preds.copy()
+    combined[specialist_mask] = spec_preds
+
+    return pd.Series(combined)
+
+
 def save_predictions(df: pd.DataFrame, output_path: str) -> None:
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     df.to_csv(output_path, index=False)
@@ -81,6 +97,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', required=True)
     parser.add_argument('--models', nargs='*', default=[])
+    parser.add_argument('--hierarchical', action='store_true')
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -89,7 +106,7 @@ def main() -> None:
     models_dir    = config['paths']['models_dir'] if 'models_dir' in config['paths'] else 'results/models'
     metrics_dir   = config['paths']['metrics_dir'] if 'metrics_dir' in config['paths'] else 'results/metrics'
 
-    X_train, X_test, y_train, y_test = load_data(processed_dir)
+    _, X_test, _, y_test = load_data(processed_dir)
 
     models = load_models(models_dir, args.models)
 
@@ -99,10 +116,27 @@ def main() -> None:
 
     df = generate_predictions(models, X_test, y_test)
 
+    if args.hierarchical:
+        xgb_pipeline        = models.get('xgboost')
+        specialist_pipeline = models.get('xgboost_specialist')
+        if xgb_pipeline is None or specialist_pipeline is None:
+            logging.warning('--hierarchical requires both xgboost and xgboost_specialist models. Skipping.')
+        else:
+            df['xgboost_hierarchical_pred'] = generate_hierarchical_predictions(
+                xgb_pipeline, specialist_pipeline, X_test, y_test
+            )
+            score = f1_score(df['y_true'], df['xgboost_hierarchical_pred'], average='weighted')
+            logging.info(f'Hierarchical XGBoost: weighted F1: {score:.4f}')
+
     output_path = os.path.join(metrics_dir, 'predictions.csv')
     save_predictions(df, output_path)
 
-    print_summary(df, list(models.keys()))
+    summary_models = list(models.keys())
+    if args.hierarchical and 'xgboost_specialist' in summary_models:
+        summary_models.remove('xgboost_specialist')
+        summary_models.append('xgboost_hierarchical')
+
+    print_summary(df, summary_models)
 
 
 if __name__ == '__main__':
